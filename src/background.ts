@@ -1,4 +1,5 @@
 import type { ExtensionState } from "./types";
+import { buildDynamicRules } from "./blocking";
 
 const STORAGE_KEY = "focusBlockerState";
 
@@ -24,20 +25,7 @@ async function setState(next: ExtensionState): Promise<void> {
 
 async function updateRulesFromState(state: ExtensionState): Promise<void> {
   const ruleIds = state.blockedDomains.map((_, idx) => idx + 1);
-
-  const addRules: chrome.declarativeNetRequest.Rule[] = state.blockedDomains.map(
-    (domain, index) => ({
-      id: index + 1,
-      priority: 1,
-      action: {
-        type: chrome.declarativeNetRequest.RuleActionType.BLOCK,
-      },
-      condition: {
-        urlFilter: `||${domain}`,
-        resourceTypes: [chrome.declarativeNetRequest.ResourceType.MAIN_FRAME],
-      },
-    })
-  );
+  const addRules = buildDynamicRules(state);
 
   await chrome.declarativeNetRequest.updateDynamicRules({
     removeRuleIds: ruleIds,

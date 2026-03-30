@@ -1,4 +1,5 @@
 import type { ExtensionState } from "./types";
+import { parseDomains } from "./blocking";
 
 function getBackgroundState(): Promise<ExtensionState> {
   return new Promise((resolve) => {
@@ -15,13 +16,6 @@ function updateBackgroundState(state: ExtensionState): Promise<void> {
       () => resolve()
     );
   });
-}
-
-function parseDomains(text: string): string[] {
-  return text
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
 }
 
 function domainsToText(domains: string[]): string {
