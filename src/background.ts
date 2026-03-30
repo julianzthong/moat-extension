@@ -1,5 +1,5 @@
 import type { ExtensionState } from "./types";
-import { buildDynamicRules } from "./blocking";
+import { buildDynamicRules } from "./domainRules";
 
 const STORAGE_KEY = "focusBlockerState";
 
@@ -8,7 +8,7 @@ const DEFAULT_STATE: ExtensionState = {
   blockedDomains: [],
 };
 
-async function getState(): Promise<ExtensionState> {
+export async function getState(): Promise<ExtensionState> {
   return new Promise((resolve) => {
     chrome.storage.sync.get(STORAGE_KEY, (result) => {
       const state = (result[STORAGE_KEY] as ExtensionState | undefined) ?? DEFAULT_STATE;
@@ -17,13 +17,13 @@ async function getState(): Promise<ExtensionState> {
   });
 }
 
-async function setState(next: ExtensionState): Promise<void> {
+export async function setState(next: ExtensionState): Promise<void> {
   return new Promise((resolve) => {
     chrome.storage.sync.set({ [STORAGE_KEY]: next }, () => resolve());
   });
 }
 
-async function updateRulesFromState(state: ExtensionState): Promise<void> {
+export async function updateRulesFromState(state: ExtensionState): Promise<void> {
   const ruleIds = state.blockedDomains.map((_, idx) => idx + 1);
   const addRules = buildDynamicRules(state);
 
@@ -33,28 +33,48 @@ async function updateRulesFromState(state: ExtensionState): Promise<void> {
   });
 }
 
-chrome.runtime.onInstalled.addListener(async () => {
-  const state = await getState();
-  await updateRulesFromState(state);
-});
+type RuntimeMessage =
+  | { type: "focusBlocker:getState" }
+  | { type: "focusBlocker:updateState"; payload: ExtensionState };
 
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  (async () => {
-    if (message?.type === "focusBlocker:getState") {
-      const state = await getState();
-      sendResponse(state);
-      return;
-    }
+export async function handleRuntimeMessage(message: RuntimeMessage | unknown): Promise<unknown> {
+  if ((message as RuntimeMessage)?.type === "focusBlocker:getState") {
+    return getState();
+  }
 
-    if (message?.type === "focusBlocker:updateState") {
-      const nextState = message.payload as ExtensionState;
-      await setState(nextState);
-      await updateRulesFromState(nextState);
-      sendResponse({ ok: true });
-      return;
-    }
-  })();
+  if ((message as RuntimeMessage)?.type === "focusBlocker:updateState") {
+    const nextState = (message as RuntimeMessage & { payload: ExtensionState }).payload;
+    await setState(nextState);
+    await updateRulesFromState(nextState);
+    return { ok: true };
+  }
 
-  return true;
-});
+  return null;
+}
 
+export function registerBackgroundListeners(): void {
+  chrome.runtime.onInstalled.addListener(async () => {
+    const state = await getState();
+    await updateRulesFromState(state);
+  });
+
+  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    void (async () => {
+      const response = await handleRuntimeMessage(message);
+      if (response !== null) {
+        sendResponse(response);
+      }
+    })();
+
+    return true;
+  });
+}
+
+if (typeof chrome !== "undefined" && chrome.runtime?.id) {
+  registerBackgroundListeners();
+}
+
+/*
+  Keep this file as a module even if tree-shaking changes in the future.
+*/
+export {};

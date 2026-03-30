@@ -1,5 +1,6 @@
 import type { ExtensionState } from "./types";
-import { parseDomains } from "./blocking";
+import { parseDomains } from "./domainRules";
+import "./popup.css";
 
 function getBackgroundState(): Promise<ExtensionState> {
   return new Promise((resolve) => {

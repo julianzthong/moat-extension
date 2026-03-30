@@ -7,7 +7,7 @@
     "strict": true,
     "jsx": "react-jsx",
     "skipLibCheck": true,
-    "types": ["chrome"],
+    "types": ["chrome", "vite/client"],
     "noEmit": true,
     "isolatedModules": true
   },

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildDynamicRules, parseDomains } from "./blocking";
+import { buildDynamicRules, parseDomains } from "./domainRules";
 import type { ExtensionState } from "./types";
 
 describe("parseDomains", () => {
