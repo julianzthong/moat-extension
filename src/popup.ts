@@ -23,7 +23,7 @@ function domainsToText(domains: string[]): string {
   return domains.join("\n");
 }
 
-async function init() {
+export async function init() {
   const enabledToggle = document.getElementById("enabledToggle") as HTMLInputElement | null;
   const domainsInput = document.getElementById("domainsInput") as HTMLTextAreaElement | null;
   const saveBtn = document.getElementById("saveBtn") as HTMLButtonElement | null;
@@ -61,5 +61,7 @@ async function init() {
   });
 }
 
-void init();
+if (typeof document !== "undefined") {
+  void init();
+}
 
