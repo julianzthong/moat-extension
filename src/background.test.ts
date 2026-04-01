@@ -74,6 +74,7 @@ describe("background message handling", () => {
 
   it("handles updateState message and updates rules", async () => {
     const chromeMock = installChromeMock();
+
     const nextState: ExtensionState = {
       enabled: true,
       blockedDomains: ["twitter.com", "reddit.com"],
@@ -85,7 +86,7 @@ describe("background message handling", () => {
 
     expect(chromeMock.storage.sync.set).toHaveBeenCalled();
     expect(chromeMock.declarativeNetRequest.updateDynamicRules).toHaveBeenCalledWith({
-      removeRuleIds: [1, 2],
+      removeRuleIds: Array.from({ length: 100 }, (_, idx) => idx + 1),
       addRules: expect.arrayContaining([
         expect.objectContaining({ id: 1, condition: expect.objectContaining({ urlFilter: "||twitter.com" }) }),
         expect.objectContaining({ id: 2, condition: expect.objectContaining({ urlFilter: "||reddit.com" }) }),
@@ -100,7 +101,7 @@ describe("background message handling", () => {
     await updateRulesFromState(state);
 
     expect(chromeMock.declarativeNetRequest.updateDynamicRules).toHaveBeenCalledWith({
-      removeRuleIds: [1],
+      removeRuleIds: Array.from({ length: 100 }, (_, idx) => idx + 1),
       addRules: [],
     });
   });

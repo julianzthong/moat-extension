@@ -20,18 +20,21 @@
     <label>
       <div class="row" style="margin-bottom: 6px">
         <span>Blocked domains</span>
-        <span class="pill">one per line</span>
+        <span class="pill">add one at a time</span>
       </div>
-      <textarea
-        id="domainsInput"
-        placeholder="twitter.com
-reddit.com
-youtube.com"
-      ></textarea>
-      <small>Changes apply when you hit Save and only while focus mode is on.</small>
+      <div class="row" style="gap: 8px; margin-bottom: 8px;">
+        <input
+          id="domainInput"
+          type="text"
+          placeholder="twitter.com"
+          style="flex: 1; border-radius: 10px; border: 1px solid #1f2937; background: #020617; color: #e5e7eb; padding: 8px 9px;"
+        />
+        <button id="addBtn" type="button">Add</button>
+      </div>
+      <small>Enter one domain and click Add. Use x to remove an item.</small>
     </label>
 
-    <button id="saveBtn">Save</button>
+    <ul id="domainList" style="margin-top: 8px; padding: 0; list-style: none; gap: 6px; display: flex; flex-direction: column;"></ul>
 
     <script src="src/popup.ts" type="module"></script>
   </body>

@@ -126,3 +126,41 @@ small {
   color: #9ca3af;
 }
 
+#domainList {
+  margin-top: 8px;
+  padding: 0;
+  list-style: none;
+  gap: 6px;
+  display: flex;
+  flex-direction: column;
+}
+
+.domain-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 8px;
+  border: 1px solid #374151;
+  border-radius: 8px;
+  background: #0f172a;
+}
+
+.domain-text {
+  font-size: 12px;
+}
+
+.remove-domain-btn {
+  border: none;
+  background: transparent;
+  color: #f97316;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0;
+}
+
+.domain-empty {
+  opacity: 0.7;
+  font-size: 12px;
+}
+
+

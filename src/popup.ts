@@ -19,45 +19,114 @@ function updateBackgroundState(state: ExtensionState): Promise<void> {
   });
 }
 
-function domainsToText(domains: string[]): string {
-  return domains.join("\n");
+function setStatusText(statusText: HTMLDivElement, enabled: boolean): void {
+  statusText.textContent = enabled ? "Blocking is active" : "Blocking is off";
+}
+
+function renderDomainList(domainList: HTMLUListElement, domains: string[]): void {
+  domainList.innerHTML = "";
+
+  if (domains.length === 0) {
+    const emptyItem = document.createElement("li");
+    emptyItem.className = "domain-empty";
+    emptyItem.textContent = "No domains blocked yet.";
+    domainList.appendChild(emptyItem);
+    return;
+  }
+
+  domains.forEach((domain) => {
+    const item = document.createElement("li");
+    item.className = "domain-item";
+
+    const text = document.createElement("span");
+    text.className = "domain-text";
+    text.textContent = domain;
+
+    const removeBtn = document.createElement("button");
+    removeBtn.type = "button";
+    removeBtn.className = "remove-domain-btn";
+    removeBtn.textContent = "✕";
+
+    removeBtn.addEventListener("click", () => {
+      const currentDomains = Array.from(domainList.querySelectorAll("li > span")).map((span) =>
+        span.textContent?.trim() ?? ""
+      );
+      const filtered = currentDomains.filter((d) => d !== domain);
+      (domainList as any).onChange(filtered);
+    });
+
+    item.appendChild(text);
+    item.appendChild(removeBtn);
+    domainList.appendChild(item);
+  });
+}
+
+function normalizeDomainEntry(raw: string): string | null {
+  const parsed = parseDomains(raw).at(0);
+  if (!parsed) return null;
+  return parsed;
 }
 
 export async function init() {
   const enabledToggle = document.getElementById("enabledToggle") as HTMLInputElement | null;
-  const domainsInput = document.getElementById("domainsInput") as HTMLTextAreaElement | null;
-  const saveBtn = document.getElementById("saveBtn") as HTMLButtonElement | null;
+  const domainInput = document.getElementById("domainInput") as HTMLInputElement | null;
+  const addBtn = document.getElementById("addBtn") as HTMLButtonElement | null;
+  const domainList = document.getElementById("domainList") as HTMLUListElement | null;
   const statusText = document.getElementById("statusText") as HTMLDivElement | null;
 
-  if (!enabledToggle || !domainsInput || !saveBtn || !statusText) {
+  if (!enabledToggle || !domainInput || !addBtn || !domainList || !statusText) {
     return;
   }
 
   let currentState = await getBackgroundState();
 
   enabledToggle.checked = currentState.enabled;
-  domainsInput.value = domainsToText(currentState.blockedDomains);
-  statusText.textContent = currentState.enabled ? "Blocking is active" : "Blocking is off";
+  setStatusText(statusText, currentState.enabled);
+
+  const syncState = async (nextState: ExtensionState): Promise<void> => {
+    currentState = nextState;
+    domainList.innerHTML = "";
+    renderDomainList(domainList, currentState.blockedDomains);
+    await updateBackgroundState(currentState);
+  };
+
+  (domainList as any).onChange = async (domains: string[]) => {
+    await syncState({ ...currentState, blockedDomains: domains });
+  };
+
+  renderDomainList(domainList, currentState.blockedDomains);
 
   enabledToggle.addEventListener("change", async () => {
-    currentState = {
-      ...currentState,
-      enabled: enabledToggle.checked,
-    };
-    statusText.textContent = currentState.enabled ? "Blocking is active" : "Blocking is off";
-    saveBtn.disabled = true;
+    currentState = { ...currentState, enabled: enabledToggle.checked };
+    setStatusText(statusText, currentState.enabled);
     await updateBackgroundState(currentState);
-    saveBtn.disabled = false;
   });
 
-  saveBtn.addEventListener("click", async () => {
-    currentState = {
+  addBtn.addEventListener("click", async () => {
+    const newDomain = normalizeDomainEntry(domainInput.value);
+    if (!newDomain) {
+      return;
+    }
+
+    if (currentState.blockedDomains.includes(newDomain)) {
+      domainInput.value = "";
+      return;
+    }
+
+    const nextState = {
       ...currentState,
-      blockedDomains: parseDomains(domainsInput.value),
+      blockedDomains: [...currentState.blockedDomains, newDomain],
     };
-    saveBtn.disabled = true;
-    await updateBackgroundState(currentState);
-    saveBtn.disabled = false;
+
+    domainInput.value = "";
+    await syncState(nextState);
+  });
+
+  domainInput.addEventListener("keydown", async (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      addBtn.click();
+    }
   });
 }
 

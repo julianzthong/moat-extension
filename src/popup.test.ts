@@ -16,8 +16,9 @@ function setPopupDom(): void {
   document.body.innerHTML = `
     <div>
       <input type="checkbox" id="enabledToggle" />
-      <textarea id="domainsInput"></textarea>
-      <button id="saveBtn">Save</button>
+      <input type="text" id="domainInput" />
+      <button id="addBtn">Add</button>
+      <ul id="domainList"></ul>
       <div id="statusText"></div>
     </div>
   `;
@@ -61,12 +62,12 @@ describe("popup", () => {
     await init();
 
     const enabledToggle = document.getElementById("enabledToggle") as HTMLInputElement;
-    const domainsInput = document.getElementById("domainsInput") as HTMLTextAreaElement;
     const statusText = document.getElementById("statusText") as HTMLDivElement;
+    const domainItems = Array.from(document.querySelectorAll("#domainList li span")).map((el) => el.textContent);
 
     expect(enabledToggle.checked).toBe(true);
-    expect(domainsInput.value).toBe("reddit.com\nyoutube.com");
     expect(statusText.textContent).toBe("Blocking is active");
+    expect(domainItems).toEqual(["reddit.com", "youtube.com"]);
   });
 
   it("sends update when toggle changes", async () => {
@@ -85,21 +86,36 @@ describe("popup", () => {
     });
   });
 
-  it("sends parsed domains when save is clicked", async () => {
+  it("sends update when remove x is clicked", async () => {
+    const { sent } = installChromeRuntimeMock({ enabled: false, blockedDomains: ["reddit.com", "youtube.com"] });
+    await init();
+
+    const removeButton = document.querySelector("#domainList li button") as HTMLButtonElement;
+    removeButton.click();
+    await flush();
+
+    const update = sent.find((msg) => msg.type === "focusBlocker:updateState");
+    expect(update).toEqual({
+      type: "focusBlocker:updateState",
+      payload: { enabled: false, blockedDomains: ["youtube.com"] },
+    });
+  });
+
+  it("sends update when add button is clicked", async () => {
     const { sent } = installChromeRuntimeMock(baseState);
     await init();
 
-    const domainsInput = document.getElementById("domainsInput") as HTMLTextAreaElement;
-    const saveBtn = document.getElementById("saveBtn") as HTMLButtonElement;
+    const domainInput = document.getElementById("domainInput") as HTMLInputElement;
+    const addBtn = document.getElementById("addBtn") as HTMLButtonElement;
 
-    domainsInput.value = "  Reddit.com \n\nYOUTUBE.com";
-    saveBtn.click();
+    domainInput.value = "  Reddit.com ";
+    addBtn.click();
     await flush();
 
-    const updates = sent.filter((msg) => msg.type === "focusBlocker:updateState");
-    expect(updates.at(-1)).toEqual({
+    const update = sent.find((msg) => msg.type === "focusBlocker:updateState");
+    expect(update).toEqual({
       type: "focusBlocker:updateState",
-      payload: { enabled: false, blockedDomains: ["reddit.com", "youtube.com"] },
+      payload: { enabled: false, blockedDomains: ["twitter.com", "reddit.com"] },
     });
   });
 });

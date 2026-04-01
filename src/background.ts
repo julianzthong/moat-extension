@@ -23,12 +23,14 @@ export async function setState(next: ExtensionState): Promise<void> {
   });
 }
 
+const MAX_DYNAMIC_RULES = 100;
+
 export async function updateRulesFromState(state: ExtensionState): Promise<void> {
-  const ruleIds = state.blockedDomains.map((_, idx) => idx + 1);
+  const removeRuleIds = Array.from({ length: MAX_DYNAMIC_RULES }, (_, idx) => idx + 1);
   const addRules = buildDynamicRules(state);
 
   await chrome.declarativeNetRequest.updateDynamicRules({
-    removeRuleIds: ruleIds,
+    removeRuleIds,
     addRules: state.enabled ? addRules : [],
   });
 }
@@ -53,10 +55,13 @@ export async function handleRuntimeMessage(message: RuntimeMessage | unknown): P
 }
 
 export function registerBackgroundListeners(): void {
-  chrome.runtime.onInstalled.addListener(async () => {
+  const syncState = async () => {
     const state = await getState();
     await updateRulesFromState(state);
-  });
+  };
+
+  chrome.runtime.onInstalled.addListener(syncState);
+  chrome.runtime.onStartup.addListener(syncState);
 
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     void (async () => {
@@ -72,6 +77,10 @@ export function registerBackgroundListeners(): void {
 
 if (typeof chrome !== "undefined" && chrome.runtime?.id) {
   registerBackgroundListeners();
+  void (async () => {
+    const state = await getState();
+    await updateRulesFromState(state);
+  })();
 }
 
 /*
