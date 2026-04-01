@@ -1,5 +1,6 @@
 import type { ExtensionState } from "./types";
 import { buildDynamicRules } from "./domainRules";
+import { getStorageValue, setStorageValue } from "./storage";
 
 const STORAGE_KEY = "focusBlockerState";
 
@@ -8,22 +9,20 @@ const DEFAULT_STATE: ExtensionState = {
   blockedDomains: [],
 };
 
+const MAX_DYNAMIC_RULES = 100;
+
 export async function getState(): Promise<ExtensionState> {
-  return new Promise((resolve) => {
-    chrome.storage.sync.get(STORAGE_KEY, (result) => {
-      const state = (result[STORAGE_KEY] as ExtensionState | undefined) ?? DEFAULT_STATE;
-      resolve(state);
-    });
-  });
+  const state = await getStorageValue<ExtensionState>(STORAGE_KEY);
+  return state ?? DEFAULT_STATE;
 }
 
 export async function setState(next: ExtensionState): Promise<void> {
-  return new Promise((resolve) => {
-    chrome.storage.sync.set({ [STORAGE_KEY]: next }, () => resolve());
-  });
-}
+  await setStorageValue(STORAGE_KEY, next);
 
-const MAX_DYNAMIC_RULES = 100;
+  if (next.enabled) {
+    await clearCacheForDomains(next.blockedDomains);
+  }
+}
 
 export async function updateRulesFromState(state: ExtensionState): Promise<void> {
   const removeRuleIds = Array.from({ length: MAX_DYNAMIC_RULES }, (_, idx) => idx + 1);
@@ -33,6 +32,18 @@ export async function updateRulesFromState(state: ExtensionState): Promise<void>
     removeRuleIds,
     addRules: state.enabled ? addRules : [],
   });
+}
+
+async function clearCacheForDomains(domains: string[]): Promise<void> {
+  if (domains.length === 0) return;
+  console.log("hello we are working here");
+  const origins = domains.map((d) => `https://${d}`) as [string, ...string[]];
+  // Clear cache by origin for each domain
+  // console.log(origins);
+  chrome.browsingData.remove(
+    { origins },
+    { cache: true, cacheStorage: true }
+  );
 }
 
 type RuntimeMessage =

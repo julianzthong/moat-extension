@@ -62,9 +62,12 @@ function renderDomainList(domainList: HTMLUListElement, domains: string[]): void
 }
 
 function normalizeDomainEntry(raw: string): string | null {
-  const parsed = parseDomains(raw).at(0);
-  if (!parsed) return null;
-  return parsed;
+  const normalized = raw.trim().toLowerCase();
+  if (normalized.length === 0) return null;
+
+  // Basic domain validation: no spaces, at least one dot, no leading/trailing dots
+  const domainRegex = /^[a-z0-9]+([-.][a-z0-9]+)*\.[a-z]{2,}$/;
+  return domainRegex.test(normalized) ? normalized : null;
 }
 
 export async function init() {
