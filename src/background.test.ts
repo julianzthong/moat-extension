@@ -11,8 +11,14 @@ type ChromeMock = {
       set: ReturnType<typeof vi.fn>;
     };
   };
+  runtime: {
+    lastError?: unknown;
+  };
   declarativeNetRequest: {
     updateDynamicRules: ReturnType<typeof vi.fn>;
+  };
+  browsingData: {
+    remove: ReturnType<typeof vi.fn>;
   };
 };
 
@@ -26,8 +32,14 @@ function installChromeMock(stateInStorage?: ExtensionState): ChromeMock {
         set: vi.fn((_value: unknown, cb: () => void) => cb()),
       },
     },
+    runtime: {
+      lastError: undefined,
+    },
     declarativeNetRequest: {
       updateDynamicRules: vi.fn(async () => undefined),
+    },
+    browsingData: {
+      remove: vi.fn(async () => undefined),
     },
   };
 
@@ -54,6 +66,10 @@ describe("background state functions", () => {
     expect(chromeMock.storage.sync.set).toHaveBeenCalledWith(
       { [STORAGE_KEY]: nextState },
       expect.any(Function)
+    );
+    expect(chromeMock.browsingData.remove).toHaveBeenCalledWith(
+      { origins: ["https://reddit.com"] },
+      { cache: true, cacheStorage: true }
     );
   });
 });
@@ -92,6 +108,10 @@ describe("background message handling", () => {
         expect.objectContaining({ id: 2, condition: expect.objectContaining({ urlFilter: "||reddit.com" }) }),
       ]),
     });
+    expect(chromeMock.browsingData.remove).toHaveBeenCalledWith(
+      { origins: ["https://twitter.com", "https://reddit.com"] },
+      { cache: true, cacheStorage: true }
+    );
   });
 
   it("does not add rules when blocking is disabled", async () => {

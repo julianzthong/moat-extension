@@ -36,10 +36,10 @@ export async function updateRulesFromState(state: ExtensionState): Promise<void>
 
 async function clearCacheForDomains(domains: string[]): Promise<void> {
   if (domains.length === 0) return;
-  console.log("hello we are working here");
+
   const origins = domains.map((d) => `https://${d}`) as [string, ...string[]];
+
   // Clear cache by origin for each domain
-  // console.log(origins);
   chrome.browsingData.remove(
     { origins },
     { cache: true, cacheStorage: true }
