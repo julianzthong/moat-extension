@@ -17,33 +17,58 @@ export async function getState(): Promise<ExtensionState> {
 }
 
 export async function setState(next: ExtensionState): Promise<void> {
-  await setStorageValue(STORAGE_KEY, next);
+  try {
+    await setStorageValue(STORAGE_KEY, next);
 
-  if (next.enabled) {
-    await clearCacheForDomains(next.blockedDomains);
+    if (next.enabled) {
+      await clearCacheForDomains(next.blockedDomains);
+    }
+  } catch (error) {
+    console.error("Failed to set state:", error);
+    throw error;
   }
 }
 
 export async function updateRulesFromState(state: ExtensionState): Promise<void> {
-  const removeRuleIds = Array.from({ length: MAX_DYNAMIC_RULES }, (_, idx) => idx + 1);
-  const addRules = buildDynamicRules(state);
+  try {
+    const removeRuleIds = Array.from({ length: MAX_DYNAMIC_RULES }, (_, idx) => idx + 1);
+    const addRules = buildDynamicRules(state);
 
-  await chrome.declarativeNetRequest.updateDynamicRules({
-    removeRuleIds,
-    addRules: state.enabled ? addRules : [],
-  });
+    await chrome.declarativeNetRequest.updateDynamicRules({
+      removeRuleIds,
+      addRules: state.enabled ? addRules : [],
+    });
+  } catch (error) {
+    console.error("Failed to update dynamic rules:", error);
+    throw error;
+  }
 }
 
 async function clearCacheForDomains(domains: string[]): Promise<void> {
   if (domains.length === 0) return;
 
-  const origins = domains.map((d) => `https://${d}`) as [string, ...string[]];
+  try {
+    const origins = domains.map((d) => `https://${d}`) as [string, ...string[]];
 
-  // Clear cache by origin for each domain
-  chrome.browsingData.remove(
-    { origins },
-    { cache: true, cacheStorage: true }
-  );
+    // Clear cache by origin for each domain
+    await new Promise<void>((resolve, reject) => {
+      chrome.browsingData.remove(
+        { origins },
+        { cache: true, cacheStorage: true },
+        () => {
+          const error = chrome.runtime.lastError;
+          if (error) {
+            reject(error);
+          } else {
+            resolve();
+          }
+        }
+      );
+    });
+  } catch (error) {
+    console.error("Failed to clear cache for domains:", error);
+    // Don't throw here - this is a secondary operation, let the primary operation succeed
+  }
 }
 
 type RuntimeMessage =
@@ -51,24 +76,33 @@ type RuntimeMessage =
   | { type: "focusBlocker:updateState"; payload: ExtensionState };
 
 export async function handleRuntimeMessage(message: RuntimeMessage | unknown): Promise<unknown> {
-  if ((message as RuntimeMessage)?.type === "focusBlocker:getState") {
-    return getState();
-  }
+  try {
+    if ((message as RuntimeMessage)?.type === "focusBlocker:getState") {
+      return await getState();
+    }
 
-  if ((message as RuntimeMessage)?.type === "focusBlocker:updateState") {
-    const nextState = (message as RuntimeMessage & { payload: ExtensionState }).payload;
-    await setState(nextState);
-    await updateRulesFromState(nextState);
-    return { ok: true };
-  }
+    if ((message as RuntimeMessage)?.type === "focusBlocker:updateState") {
+      const nextState = (message as RuntimeMessage & { payload: ExtensionState }).payload;
+      await setState(nextState);
+      await updateRulesFromState(nextState);
+      return { ok: true };
+    }
 
-  return null;
+    return null;
+  } catch (error) {
+    console.error("Error handling runtime message:", error);
+    return { ok: false, error: error instanceof Error ? error.message : "Unknown error" };
+  }
 }
 
 export function registerBackgroundListeners(): void {
   const syncState = async () => {
-    const state = await getState();
-    await updateRulesFromState(state);
+    try {
+      const state = await getState();
+      await updateRulesFromState(state);
+    } catch (error) {
+      console.error("Error syncing state on extension event:", error);
+    }
   };
 
   chrome.runtime.onInstalled.addListener(syncState);
@@ -76,9 +110,17 @@ export function registerBackgroundListeners(): void {
 
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     void (async () => {
-      const response = await handleRuntimeMessage(message);
-      if (response !== null) {
-        sendResponse(response);
+      try {
+        const response = await handleRuntimeMessage(message);
+        if (response !== null) {
+          sendResponse(response);
+        }
+      } catch (error) {
+        console.error("Error in message listener:", error);
+        sendResponse({
+          ok: false,
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
       }
     })();
 
@@ -89,8 +131,12 @@ export function registerBackgroundListeners(): void {
 if (typeof chrome !== "undefined" && chrome.runtime?.id) {
   registerBackgroundListeners();
   void (async () => {
-    const state = await getState();
-    await updateRulesFromState(state);
+    try {
+      const state = await getState();
+      await updateRulesFromState(state);
+    } catch (error) {
+      console.error("Error initializing background service worker:", error);
+    }
   })();
 }
 

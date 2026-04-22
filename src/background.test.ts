@@ -39,7 +39,7 @@ function installChromeMock(stateInStorage?: ExtensionState): ChromeMock {
       updateDynamicRules: vi.fn(async () => undefined),
     },
     browsingData: {
-      remove: vi.fn(async () => undefined),
+      remove: vi.fn((_, __, cb: () => void) => cb()),
     },
   };
 
@@ -69,7 +69,8 @@ describe("background state functions", () => {
     );
     expect(chromeMock.browsingData.remove).toHaveBeenCalledWith(
       { origins: ["https://reddit.com"] },
-      { cache: true, cacheStorage: true }
+      { cache: true, cacheStorage: true },
+      expect.any(Function)
     );
   });
 });
@@ -110,7 +111,8 @@ describe("background message handling", () => {
     });
     expect(chromeMock.browsingData.remove).toHaveBeenCalledWith(
       { origins: ["https://twitter.com", "https://reddit.com"] },
-      { cache: true, cacheStorage: true }
+      { cache: true, cacheStorage: true },
+      expect.any(Function)
     );
   });
 
