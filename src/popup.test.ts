@@ -10,6 +10,8 @@ type RuntimeMessage =
 const baseState: ExtensionState = {
   enabled: false,
   blockedDomains: ["twitter.com"],
+  notificationsEnabled: false,
+  schedule: null,
 };
 
 function setPopupDom(): void {
@@ -18,6 +20,7 @@ function setPopupDom(): void {
       <input type="checkbox" id="enabledToggle" />
       <input type="text" id="domainInput" />
       <button id="addBtn">Add</button>
+      <button id="settingsBtn">Settings</button>
       <ul id="domainList"></ul>
       <div id="statusText"></div>
     </div>
@@ -57,6 +60,8 @@ describe("popup", () => {
     installChromeRuntimeMock({
       enabled: true,
       blockedDomains: ["reddit.com", "youtube.com"],
+      notificationsEnabled: false,
+      schedule: null,
     });
 
     await init();
@@ -82,12 +87,23 @@ describe("popup", () => {
     const update = sent.find((msg) => msg.type === "focusBlocker:updateState");
     expect(update).toEqual({
       type: "focusBlocker:updateState",
-      payload: { enabled: true, blockedDomains: ["twitter.com"] },
+      payload: {
+        enabled: true,
+        blockedDomains: ["twitter.com"],
+        notificationsEnabled: false,
+        schedule: null,
+      },
     });
   });
 
   it("sends update when remove x is clicked", async () => {
-    const { sent } = installChromeRuntimeMock({ enabled: false, blockedDomains: ["reddit.com", "youtube.com"] });
+    const { sent } = installChromeRuntimeMock({
+      enabled: false,
+      blockedDomains: ["reddit.com", "youtube.com"],
+      notificationsEnabled: false,
+      schedule: null,
+    });
+
     await init();
 
     const removeButton = document.querySelector("#domainList li button") as HTMLButtonElement;
@@ -97,7 +113,12 @@ describe("popup", () => {
     const update = sent.find((msg) => msg.type === "focusBlocker:updateState");
     expect(update).toEqual({
       type: "focusBlocker:updateState",
-      payload: { enabled: false, blockedDomains: ["youtube.com"] },
+      payload: {
+        enabled: false,
+        blockedDomains: ["youtube.com"],
+        notificationsEnabled: false,
+        schedule: null,
+      },
     });
   });
 
@@ -115,7 +136,12 @@ describe("popup", () => {
     const update = sent.find((msg) => msg.type === "focusBlocker:updateState");
     expect(update).toEqual({
       type: "focusBlocker:updateState",
-      payload: { enabled: false, blockedDomains: ["twitter.com", "reddit.com"] },
+      payload: {
+        enabled: false,
+        blockedDomains: ["twitter.com", "reddit.com"],
+        notificationsEnabled: false,
+        schedule: null,
+      },
     });
   });
 });

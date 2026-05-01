@@ -54,12 +54,22 @@ describe("background state functions", () => {
 
   it("returns default state when storage is empty", async () => {
     installChromeMock();
-    await expect(getState()).resolves.toEqual({ enabled: false, blockedDomains: [] });
+    await expect(getState()).resolves.toEqual({
+      enabled: false,
+      blockedDomains: [],
+      notificationsEnabled: false,
+      schedule: null,
+    });
   });
 
   it("persists state in storage", async () => {
     const chromeMock = installChromeMock();
-    const nextState: ExtensionState = { enabled: true, blockedDomains: ["reddit.com"] };
+    const nextState: ExtensionState = {
+      enabled: true,
+      blockedDomains: ["reddit.com"],
+      notificationsEnabled: false,
+      schedule: null,
+    };
 
     await setState(nextState);
 
@@ -81,7 +91,13 @@ describe("background message handling", () => {
   });
 
   it("handles getState message", async () => {
-    const storedState: ExtensionState = { enabled: true, blockedDomains: ["youtube.com"] };
+    const storedState: ExtensionState = {
+      enabled: true,
+      blockedDomains: ["youtube.com"],
+      notificationsEnabled: false,
+      schedule: null
+    };
+
     installChromeMock(storedState);
 
     await expect(handleRuntimeMessage({ type: "focusBlocker:getState" })).resolves.toEqual(
@@ -95,6 +111,8 @@ describe("background message handling", () => {
     const nextState: ExtensionState = {
       enabled: true,
       blockedDomains: ["twitter.com", "reddit.com"],
+      notificationsEnabled: false,
+      schedule: null,
     };
 
     await expect(
@@ -118,7 +136,12 @@ describe("background message handling", () => {
 
   it("does not add rules when blocking is disabled", async () => {
     const chromeMock = installChromeMock();
-    const state: ExtensionState = { enabled: false, blockedDomains: ["news.ycombinator.com"] };
+    const state: ExtensionState = {
+      enabled: false,
+      blockedDomains: ["news.ycombinator.com"],
+      notificationsEnabled: false,
+      schedule: null,
+    };
 
     await updateRulesFromState(state);
 

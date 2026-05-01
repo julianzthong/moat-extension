@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Focus Blocker Settings</title>
+    <link rel="stylesheet" href="src/options.css" />
+  </head>
+  <body>
+    <h1>Focus Blocker Settings</h1>
+
+    <section>
+      <h2>Notifications</h2>
+      <label>
+        <input type="checkbox" id="notificationsToggle" />
+        Show notifications when sites are blocked
+      </label>
+    </section>
+
+    <section>
+      <h2>Schedule</h2>
+      <label>
+        <input type="checkbox" id="scheduleEnabled" />
+        Enable scheduled blocking
+      </label>
+      <div id="scheduleOptions" style="display: none; margin-top: 10px;">
+        <label>
+          Start time:
+          <input type="time" id="startTime" />
+        </label>
+        <label>
+          End time:
+          <input type="time" id="endTime" />
+        </label>
+        <div>
+          Days of week:
+          <label><input type="checkbox" value="0" /> Sun</label>
+          <label><input type="checkbox" value="1" /> Mon</label>
+          <label><input type="checkbox" value="2" /> Tue</label>
+          <label><input type="checkbox" value="3" /> Wed</label>
+          <label><input type="checkbox" value="4" /> Thu</label>
+          <label><input type="checkbox" value="5" /> Fri</label>
+          <label><input type="checkbox" value="6" /> Sat</label>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Import/Export</h2>
+      <button id="exportBtn">Export Blocked Domains</button>
+      <input type="file" id="importFile" accept=".json" style="display: none;" />
+      <button id="importBtn">Import Blocked Domains</button>
+    </section>
+
+    <script src="src/options.ts" type="module"></script>
+  </body>
+</html>

@@ -75,8 +75,9 @@ export async function init() {
   const addBtn = document.getElementById("addBtn") as HTMLButtonElement | null;
   const domainList = document.getElementById("domainList") as HTMLUListElement | null;
   const statusText = document.getElementById("statusText") as HTMLDivElement | null;
+  const settingsBtn = document.getElementById("settingsBtn") as HTMLButtonElement | null;
 
-  if (!enabledToggle || !domainInput || !addBtn || !domainList || !statusText) {
+  if (!enabledToggle || !domainInput || !addBtn || !domainList || !statusText || !settingsBtn) {
     return;
   }
 
@@ -129,6 +130,10 @@ export async function init() {
       event.preventDefault();
       addBtn.click();
     }
+  });
+
+  settingsBtn.addEventListener("click", () => {
+    chrome.runtime.openOptionsPage();
   });
 }
 

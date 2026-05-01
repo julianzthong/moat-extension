@@ -7,6 +7,8 @@ const STORAGE_KEY = "focusBlockerState";
 const DEFAULT_STATE: ExtensionState = {
   enabled: false,
   blockedDomains: [],
+  notificationsEnabled: false,
+  schedule: null,
 };
 
 const MAX_DYNAMIC_RULES = 100;
@@ -71,6 +73,29 @@ async function clearCacheForDomains(domains: string[]): Promise<void> {
   }
 }
 
+function isWithinSchedule(schedule: ExtensionState['schedule']): boolean {
+  if (!schedule) return false;
+
+  const now = new Date();
+  const currentDay = now.getDay(); // 0=Sun
+  const currentTime = now.toTimeString().slice(0, 5); // HH:MM
+
+  if (!schedule.daysOfWeek.includes(currentDay)) return false;
+
+  return currentTime >= schedule.startTime && currentTime <= schedule.endTime;
+}
+
+async function enforceSchedule(state: ExtensionState): Promise<void> {
+  if (!state.schedule) return;
+
+  const shouldBeEnabled = isWithinSchedule(state.schedule);
+  if (state.enabled !== shouldBeEnabled) {
+    const updatedState = { ...state, enabled: shouldBeEnabled };
+    await setState(updatedState);
+    await updateRulesFromState(updatedState);
+  }
+}
+
 type RuntimeMessage =
   | { type: "focusBlocker:getState" }
   | { type: "focusBlocker:updateState"; payload: ExtensionState };
@@ -85,6 +110,7 @@ export async function handleRuntimeMessage(message: RuntimeMessage | unknown): P
       const nextState = (message as RuntimeMessage & { payload: ExtensionState }).payload;
       await setState(nextState);
       await updateRulesFromState(nextState);
+      await enforceSchedule(nextState);
       return { ok: true };
     }
 
@@ -100,6 +126,7 @@ export function registerBackgroundListeners(): void {
     try {
       const state = await getState();
       await updateRulesFromState(state);
+      await enforceSchedule(state);
     } catch (error) {
       console.error("Error syncing state on extension event:", error);
     }
@@ -107,6 +134,17 @@ export function registerBackgroundListeners(): void {
 
   chrome.runtime.onInstalled.addListener(syncState);
   chrome.runtime.onStartup.addListener(syncState);
+
+  chrome.alarms.onAlarm.addListener(async (alarm) => {
+    if (alarm.name === "scheduleCheck") {
+      try {
+        const state = await getState();
+        await enforceSchedule(state);
+      } catch (error) {
+        console.error("Error checking schedule:", error);
+      }
+    }
+  });
 
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     void (async () => {
@@ -134,6 +172,10 @@ if (typeof chrome !== "undefined" && chrome.runtime?.id) {
     try {
       const state = await getState();
       await updateRulesFromState(state);
+      await enforceSchedule(state);
+
+      // Set up periodic schedule check
+      chrome.alarms.create("scheduleCheck", { periodInMinutes: 1 });
     } catch (error) {
       console.error("Error initializing background service worker:", error);
     }
